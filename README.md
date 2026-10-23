@@ -15,9 +15,9 @@ The port includes all four worlds, tutorials, enemies and bosses, character swit
 
 This repository contains runtime source, asset converters, tests and documentation. Original game files and generated runtime assets are excluded, apart from the bundled ROM icon. Screenshots illustrate the running port.
 
-## Original disc required
+## Original disc for source builds
 
-You need the supported Italian **Kinder Fresh Adventures Collection** ISO. It can be found on [Internet Archive](https://archive.org/details/kinder-fresh-adventures-collection). The build tools verify the disc before extracting it; no Windows installation is required.
+Building from source requires the supported Italian **Kinder Fresh Adventures Collection** ISO. It can be found on [Internet Archive](https://archive.org/details/kinder-fresh-adventures-collection). The build tools verify the disc before extracting it; no Windows installation is required.
 
 | Check | Required value |
 |---|---|
@@ -26,6 +26,10 @@ You need the supported Italian **Kinder Fresh Adventures Collection** ISO. It ca
 | SHA-256 | `9c6d7b33665ce10d0d2e38277d07ff51b2887c1b348012fd91210abc308458a7` |
 
 The ROM icon is included, already optimized to 32×32 pixels and 15 visible colors.
+
+## Download
+
+Download **Kinder Fresh Adventures.nds** from the [latest GitHub release](https://github.com/grecoluigi/kinder-fresh-adventures-ds/releases/latest). The release includes the compiled ROM and a SHA-256 checksum; no build or ISO is needed to play it.
 
 ## Build
 
