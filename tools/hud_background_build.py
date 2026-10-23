@@ -10,7 +10,7 @@ def build(decoded,out):
  out.mkdir(parents=True,exist_ok=False);previews=out;assets=DecodedAssets(decoded);manifest=[]
  for name,asset in WORLDS:
   source=assets.inventory[f'maps/{asset.lower()}.w01']['frames'][4]
-  rgb=np.asarray(assets.image(source,'RGB').crop((0,0,800,600)).resize((256,192),Image.Resampling.NEAREST),dtype=np.uint16)*3//4
+  rgb=np.asarray(assets.image(source,'RGB').crop((0,0,800,600)).resize((256,192),Image.Resampling.LANCZOS),dtype=np.uint16)*3//4
   words=(0x8000|(rgb[:,:,0]>>3)|((rgb[:,:,1]>>3)<<5)|((rgb[:,:,2]>>3)<<10)).astype('<u2');encoded,bits=packet(words.tobytes())
   data=struct.pack('<4sHHI',b'KHB1',256,192,len(encoded))+encoded;path=out/(name+'.bin');path.write_bytes(data)
   display=np.stack(((words&31)*255//31,((words>>5)&31)*255//31,((words>>10)&31)*255//31),axis=2).astype('u1');Image.fromarray(display).save(previews/(name+'-background.png'))

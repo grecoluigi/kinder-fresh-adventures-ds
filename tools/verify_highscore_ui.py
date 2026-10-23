@@ -2,6 +2,7 @@
 from pathlib import Path
 import ctypes as C
 import argparse,json,random,struct,subprocess,tempfile,sys
+import numpy as np
 from PIL import Image
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_EAX,UC_X86_REG_ECX,UC_X86_REG_ESP,UC_X86_REG_ESI
@@ -99,13 +100,17 @@ with tempfile.TemporaryDirectory(prefix='kinder-highscore-')as tmp:
    for i,name in enumerate(native.names):
     frames=native.inv[f'animation/interface/{name.lower()}.w01']['frames'];index=4 if i<4 and native.world_for_focus[i]==world else int(i==focus)
     f=frames[index];bg.alpha_composite(Image.open(ROOT/f['png']).convert('RGBA'),(f['x'],f['y']))
+   text=Image.new('RGBA',bg.size);background=np.asarray(bg.convert('RGB').resize((256,192),Image.Resampling.LANCZOS),dtype=np.uint16)
    native.draws.clear();u.mem_write(0x45f660,struct.pack('<I',world));u.reg_write(UC_X86_REG_ESP,0x220000);u.reg_write(UC_X86_REG_ESI,0x45f020);u.emu_start(0x403d2c,0x403deb,count=2000000)
    for command in native.draws:
-    f=native.font[command['frame']];bg.alpha_composite(Image.open(ROOT/f['png']).convert('RGBA'),(command['x'],command['y']))
-   pixels=bg.load();preview=Image.new('RGB',(256,192));pp=preview.load()
+    f=native.font[command['frame']];text.alpha_composite(Image.open(ROOT/f['png']).convert('RGBA'),(command['x'],command['y']))
+   # Lanczos backdrop; runtime glyphs stay on the centered 25/16 sample lattice.
+   pixels=text.load();preview=Image.new('RGB',(256,192));pp=preview.load()
    for y in range(192):
     for x in range(256):
-     r,g,b,_=pixels[((2*x+1)*25)//16,((2*y+1)*25)//16];expected=0x8000|(r>>3)|((g>>3)<<5)|((b>>3)<<10)
+     r,g,b,alpha=pixels[((2*x+1)*25)//16,((2*y+1)*25)//16]
+     if not alpha:r,g,b=map(int,background[y,x])
+     expected=0x8000|(r>>3)|((g>>3)<<5)|((b>>3)<<10)
      actual=framebuffer[y*256+x];assert actual==expected,(world,focus,x,y,hex(actual),hex(expected))
      pp[x,y]=((actual&31)*255//31,((actual>>5)&31)*255//31,((actual>>10)&31)*255//31)
    if focus==-1:preview.save(OUT/f'world{world}-scores.png')

@@ -22,7 +22,7 @@ def build(decoded,maps,collision,out):
   key=stem.lower();sheet=assets.inventory[f'maps/{key}.w01']['frames']
   assert(metadata['tile_width'],metadata['tile_height'],metadata['layers'])==(32,32,8)
   image=Image.new('RGBA',(800,600),'black');image.alpha_composite(assets.image(sheet[4]),(0,0))
-  blob=rgb555(image.resize((256,192),Image.Resampling.NEAREST));filename=key+'.bg'
+  blob=rgb555(image.resize((256,192),Image.Resampling.LANCZOS));filename=key+'.bg'
   if filename in backgrounds:assert backgrounds[filename]==blob
   else:backgrounds[filename]=blob;(out/filename).write_bytes(blob)
   records=[]

@@ -13,7 +13,7 @@ def assemble(generated,project,icon=None):
  generated=generated.resolve();project=project.resolve()
  icon=Path(icon).resolve() if icon is not None else project/'icon.png'
  manifest=json.loads((generated/'generation-manifest.json').read_text())
- assert manifest['through']=='scenery' and len(manifest['steps'])==28
+ assert manifest['through']=='scenery' and len(manifest['steps'])==29
  assert all(s['returncode']==0 for s in manifest['steps'])
  assert(project/'Makefile').is_file()and(project/'source').is_dir(),'Expected DS source project'
  assert not(project/'assets').exists()and not(project/'nitrofs').exists(),'Asset folders already exist'

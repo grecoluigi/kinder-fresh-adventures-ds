@@ -6,6 +6,7 @@ import hashlib
 import json
 import struct
 import numpy as np
+from PIL import Image
 from tile_storage import packet
 from decoded_assets import DecodedAssets
 
@@ -17,11 +18,34 @@ def raster(rgb,fx,fy,facing):
     x=ceil_div(16*left-25,50);y=ceil_div(16*fy-25,50)
     width=max(1,ceil_div(16*(left+w)-25,50)-x)
     height=max(1,ceil_div(16*(fy+h)-25,50)-y)
+    # Same 8/25 lattice as centered sampling; premultiplied Lanczos replaces the
+    # single source tap and the 1-bit alpha is restored at half coverage.
+    pad=12;rgba=np.zeros((h+2*pad,w+2*pad,4),dtype=np.uint8);inner=rgba[pad:pad+h,pad:pad+w]
+    for channel,shift in enumerate((0,5,10)):inner[...,channel]=((source>>shift)&31)*255//31
+    inner[...,3]=np.where(source&0x8000,255,0)
+    box=((x*25/8)-left+pad,(y*25/8)-fy+pad,((x+width)*25/8)-left+pad,((y+height)*25/8)-fy+pad)
+    a=np.asarray(Image.fromarray(rgba,'RGBA').convert('RGBa').resize((width,height),Image.Resampling.LANCZOS,box=box),dtype=np.float64)
+    c=np.clip(np.rint(a[...,:3]*31/np.maximum(a[...,3:],1)),0,31).astype(np.uint16)
+    pixels=np.where(a[...,3]>=128,c[...,0]|(c[...,1]<<5)|(c[...,2]<<10)|0x8000,0).astype('<u2')
+    # Filtering adds edge colors. Keep the frame (or, for direct-color frames,
+    # each 32-row GPU strip) within the 4/8-bit palette class its
+    # centered-sample raster had, so page formats never grow.
     xs=((2*(x+np.arange(width))+1)*25)//16-left
     ys=((2*(y+np.arange(height))+1)*25)//16-fy
     valid=(ys[:,None]>=0)&(ys[:,None]<h)&(xs[None,:]>=0)&(xs[None,:]<w)
-    pixels=np.where(valid,source[np.clip(ys,0,h-1)[:,None],np.clip(xs,0,w-1)[None,:]],0).astype('<u2')
+    nearest=np.where(valid,source[np.clip(ys,0,h-1)[:,None],np.clip(xs,0,w-1)[None,:]],0)
+    bands=[(0,height)] if len(np.unique(nearest[nearest!=0]))<=255 else [(top,top+32) for top in range(0,height,32)]
+    for top,end in bands:
+        band=pixels[top:end];before=len(np.unique(nearest[top:end][nearest[top:end]!=0]))
+        limit=15 if before<=15 else 255 if before<=255 else None
+        if limit and len(np.unique(band[band!=0]))>limit:band[band!=0]=quantize555(band[band!=0],limit)
     return pixels,x,y
+
+def quantize555(words,count):
+    rgb=np.stack([((words>>shift)&31)*255//31 for shift in (0,5,10)],axis=-1).astype(np.uint8)
+    q=Image.fromarray(rgb.reshape(-1,1,3),'RGB').quantize(colors=count,method=Image.Quantize.MEDIANCUT,dither=Image.Dither.NONE)
+    c=(np.asarray(q.convert('RGB'),dtype=np.uint16).reshape(-1,3)*31+127)//255
+    return c[:,0]|(c[:,1]<<5)|(c[:,2]<<10)|0x8000
 
 def build(decoded,out):
     out.mkdir(parents=True,exist_ok=False)
@@ -48,7 +72,7 @@ def build(decoded,out):
                          'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
                          'max_frame_bytes':max_pixels*2,'source_pixels':source_pixels,
                          'stored_packets':len(lookup),'packet_modes':dict(modes),
-                         'scaling':'Exact uniform8/25centered nearest sampling around animation origin; both facings baked',
+                         'scaling':'Uniform8/25 premultiplied Lanczos around animation origin, 1-bit alpha at half coverage; both facings baked',
                          'color':'Adaptive4/8-bit exact palettes or RGB555; no color quantization'})
     (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(json.dumps(manifest))

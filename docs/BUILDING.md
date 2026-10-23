@@ -51,7 +51,7 @@ Verify regenerated dispatch data against the current local playable assets with:
 
 This also exercises the C loader with malformed files under AddressSanitizer and UndefinedBehaviorSanitizer. It does not prove gameplay or performance.
 
-UI output directories are `menu/`, `credits/`, `end_titles/` and `highscores/`. Generated `menu/menu_hitboxes.h` and `highscores/highscore_assets.h` accompany their matching assets. The menu stage emits only the compressed base and six focus patches; menu music is handled by the audio stage.
+UI output directories are `menu/`, `credits/`, `end_titles/` and `highscores/`. Generated `menu/menu_hitboxes.h` and `highscores/highscore_assets.h` accompany their matching assets. The menu stage emits only the compressed base and six focus patches; menu music is handled by the audio stage. Menu, credits and highscore screens are Lanczos-resampled from 800×600 to 256×192.
 
 Verify decoded menu states and native highscore text/layout behavior without opening an emulator:
 
@@ -62,7 +62,7 @@ Verify decoded menu states and native highscore text/layout behavior without ope
 
 The highscore verifier's output directory must not already exist. It uses the supplied original executable for bounded native glyph/layout checks and does not overwrite playable assets.
 
-The HUD stage generates `native_bottom/` (four shared-palette backdrops and indexed HUD patches) plus `score_popups/points.bin`. `hud_intermediate/` holds offline RGB555 conversion inputs and is not a runtime dependency. It preserves the current shaded backgrounds, transparency, font colors and nearest-neighbour score scaling.
+The HUD stage generates `native_bottom/` (four shared-palette backdrops and indexed HUD patches) plus `score_popups/points.bin`. `hud_intermediate/` holds offline RGB555 conversion inputs and is not a runtime dependency. Downscaled HUD art and backdrops use premultiplied Lanczos resampling with 1-bit transparency restored at half coverage; the score font keeps exact colors and nearest-neighbour scaling.
 
 Verify the regenerated HUD loader, draw states and touch bounds with sanitizers:
 
@@ -70,7 +70,7 @@ Verify the regenerated HUD loader, draw states and touch bounds with sanitizers:
 .venv/bin/python tools/verify_native_bottom.py --assets-dir build/asset-regeneration/native_bottom --output build/asset-regeneration/native-hud-verification.json
 ```
 
-Player output is `players/` (both characters with both facings baked at the original body origin). `projectiles/` and `enemy_shots/` contain player and enemy projectile images. Physics coordinates and native frame dimensions/offsets remain in original units; sprite rasters use centered nearest sampling at 8/25 scale without palette quantization.
+Player output is `players/` (both characters with both facings baked at the original body origin). `projectiles/` and `enemy_shots/` contain player and enemy projectile images. Physics coordinates and native frame dimensions/offsets remain in original units; sprite rasters use premultiplied Lanczos resampling on the same 8/25 lattice, with 1-bit transparency at half coverage. Frames whose centered-sample rasters fit 15 or 255 colors are reduced back to that palette class, so GPU page formats do not grow.
 
 Check every character frame/facing and projectile image against decoded original artwork:
 
@@ -104,7 +104,7 @@ Verify every page through the runtime storage reader and reconstruct all source 
 .venv/bin/python tools/verify_gpu_actor_pack.py --pack build/asset-regeneration/native_actors/pages.gpu --players build/asset-regeneration/players --enemies build/asset-regeneration/enemies/enemies.frames --pickups build/asset-regeneration/entities/pickups.frames --output build/asset-regeneration/gpu-actor-verification.json
 ```
 
-The scenery stage builds all 12 native tile banks and ordered depth-packet files from original artwork and maps, then joins them with the native callback definitions in `native_scenery/`. Intermediate static passes exist only during offline conversion. The runtime uses native tilemaps and GPU depth geometry.
+The scenery stage builds all 12 native tile banks and ordered depth-packet files from original artwork and maps, then joins them with the native callback definitions in `native_scenery/`. Intermediate static passes exist only during offline conversion. Each pass is Lanczos-resampled across the whole map at 8/25 scale before it is cut into tiles, so tile borders stay seamless; scrolling and fixed backgrounds use the same filter. The runtime uses native tilemaps and GPU depth geometry.
 
 Check the runtime tile/depth loaders on the host:
 

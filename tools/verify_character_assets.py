@@ -1,8 +1,9 @@
 """Check regenerated character/projectile data against original decoded artwork.
 
-Player packets are expanded by the runtime C codec. Expected sprite pixels and
-alignment are sampled from the original coordinate lattice, without a software
-scene renderer or a rendered framebuffer reference.
+Player packets are expanded by the runtime C codec. Sprite alignment and raster
+bounds are derived independently from the original coordinate lattice; expected
+pixels come from the shared offline Lanczos raster filter. No software scene
+renderer or rendered framebuffer reference is used.
 """
 from pathlib import Path
 import argparse
@@ -14,6 +15,7 @@ import subprocess
 import tempfile
 import numpy as np
 from decoded_assets import DecodedAssets
+from player_scaled_build import raster
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -56,10 +58,7 @@ def main():
                     if not len(ix):ix=np.array([np.searchsorted(centers,left)])
                     if not len(iy):iy=np.array([np.searchsorted(centers,frame['y'])])
                     assert (pw,ph,px,py)==(len(ix),len(iy),lattice[ix[0]],lattice[iy[0]])
-                    sx=centers[ix]-left;sy=centers[iy]-frame['y']
-                    valid=(sx[None,:]>=0)&(sx[None,:]<w)&(sy[:,None]>=0)&(sy[:,None]<h)
-                    source_pixels=image if facing else image[:,::-1]
-                    expected=np.where(valid,source_pixels[np.clip(sy,0,h-1)[:,None],np.clip(sx,0,w-1)[None,:]],0)
+                    expected=raster(image,frame['x'],frame['y'],facing)[0]
                     packet=C.create_string_buffer(pack[payload+offset:payload+offset+size])
                     guard=np.full(pw*ph+32,0x1357,dtype='<u2')
                     assert codec.decode(packet,size,guard[16:].ctypes.data,pw*ph)

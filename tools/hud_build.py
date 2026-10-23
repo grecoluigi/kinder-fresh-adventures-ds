@@ -5,6 +5,7 @@ full-screen HUD format is not generated.
 """
 from pathlib import Path
 import argparse,json,struct
+import numpy as np
 from PIL import Image
 from decoded_assets import DecodedAssets
 
@@ -32,14 +33,18 @@ def build(decoded,output):
     bottom_data.extend(struct.pack('<'+'H'*len(run),*run));cursor=xx
    bottom_data.extend(struct.pack('<HH',0,0))
   bottom_manifest.append(dict(resource=rid,frame=frame,width=w,height=h,x=left,y=top))
+ def lanczos(im,size,box=None):
+  # Premultiplied Lanczos keeps thin outlines instead of dropping source rows;
+  # the 1-bit patch alpha is restored with a half-coverage cutoff.
+  a=np.asarray(im.convert('RGBa').resize(size,Image.Resampling.LANCZOS,box=box),dtype=np.float64);alpha=a[...,3:]
+  rgb=np.clip(a[...,:3]*255/np.maximum(alpha,1),0,255)
+  return Image.fromarray(np.concatenate((rgb,np.where(alpha>=128,255,0)),axis=2).round().astype('u1'),'RGBA')
  def sample_positioned(im,x,y,scale,origin):
-  # Center sampling on a shared cluster lattice keeps overlapping frame borders aligned.
+  # Filter on a shared cluster lattice keeps overlapping frame borders aligned.
   left=round(x*scale);top=round(y*scale);right=round((x+im.width)*scale);end=round((y+im.height)*scale)
-  out=Image.new('RGBA',(right-left,end-top));ip=im.load();op=out.load()
-  for yy in range(out.height):
-   sy=min(im.height-1,max(0,int((top+yy+.5)/scale)-y))
-   for xx in range(out.width):
-    sx=min(im.width-1,max(0,int((left+xx+.5)/scale)-x));op[xx,yy]=ip[sx,sy]
+  if scale==1:return im,left+origin[0],top+origin[1]
+  pad=4;padded=Image.new('RGBA',(im.width+2*pad,im.height+2*pad));padded.paste(im,(pad,pad))
+  out=lanczos(padded,(right-left,end-top),(left/scale-x+pad,top/scale-y+pad,right/scale-x+pad,end/scale-y+pad))
   return out,left+origin[0],top+origin[1]
  for rid,name in enumerate(names):
   for f in inv[base+name]['frames']:
@@ -60,7 +65,7 @@ def build(decoded,output):
    out,left,top=sample_positioned(im,x,y,scale,origin);bottom_patch(rid,f['index'],out,left,top)
  baseim=assets.image(inv[base+names[0]]['frames'][0])
  # Original PUNTI tab, cropped from the long header. No new text or colors.
- label=baseim.crop((342,0,520,32)).resize((134,24),Image.Resampling.NEAREST)
+ label=lanczos(baseim.crop((342,0,520,32)),(134,24))
  bottom_patch(15,0,label,122,0)
  target=output/'hud_bottom.bin';target.write_bytes(b'KFH2'+struct.pack('<II',len(bottom_records),len(bottom_data)//2)+b''.join(bottom_records)+bottom_data)
  (output/'hud-manifest.json').write_text(json.dumps(dict(bytes=target.stat().st_size,pixel_bytes=len(bottom_data),frames=bottom_manifest),indent=2)+'\n')

@@ -26,7 +26,6 @@ class Compiler:
   metadata=json.loads((self.maps/name/'00.json').read_text());data=(self.maps/name/'00.tiles.bin').read_bytes()
   w,h=metadata['width_cells'],metadata['height_cells'];n=w*h
   dw=ceildiv(w*32*16-25,50);dh=ceildiv(h*32*16-25,50);gw=ceildiv(dw,16);gh=ceildiv(dh,16);assert gw*gh<65536
-  xs=((2*np.arange(dw)+1)*25)//16;ys=((2*np.arange(dh)+1)*25)//16
   stem=Path(name).stem
   if stem.lower().endswith('e'):stem=stem[:-1]
   sheet=self.assets.inventory['maps/'+stem.lower()+'.w01']['frames']
@@ -35,8 +34,12 @@ class Compiler:
    nonlocal canvas,dirty
    if not dirty:return
    if canvas.getchannel('A').getbbox()is not None:
-    rgba=np.asarray(canvas)[ys[:,None],xs[None,:]].astype(np.uint16)
-    sampled=np.where(rgba[:,:,3],0x8000|(rgba[:,:,0]>>3)|((rgba[:,:,1]>>3)<<5)|((rgba[:,:,2]>>3)<<10),0).astype('<u2')
+    # Premultiplied Lanczos over the whole pass on the 8/25 lattice, so cell
+    # borders stay seamless; 1-bit alpha is restored at half coverage.
+    source=Image.new('RGBA',(ceildiv(dw*25,8)+1,ceildiv(dh*25,8)+1));source.paste(canvas,(0,0))
+    a=np.asarray(source.convert('RGBa').resize((dw,dh),Image.Resampling.LANCZOS,box=(0,0,dw*25/8,dh*25/8)),dtype=np.float64)
+    c=np.clip(np.rint(a[...,:3]*31/np.maximum(a[...,3:],1)),0,31).astype(np.uint16)
+    sampled=np.where(a[...,3]>=128,0x8000|c[...,0]|(c[...,1]<<5)|(c[...,2]<<10),0).astype('<u2')
     padded=np.zeros((gh*16,gw*16),dtype='<u2');padded[:dh,:dw]=sampled
     grid=padded.reshape(gh,16,gw,16).transpose(0,2,1,3);cells=[]
     for y,x in zip(*np.nonzero(np.any(grid,axis=(2,3)))):cells.append((int(y*gw+x),grid[y,x].reshape(256).copy()))

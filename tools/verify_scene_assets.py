@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse,ctypes as C,hashlib,json,struct,subprocess,tempfile
 import numpy as np
+from PIL import Image
 from decoded_assets import DecodedAssets
 from native_resources import asset_source
 
@@ -51,10 +52,9 @@ def main():
   source.write_text('#include "tile_codec.h"\nint decode(const uint8_t*p,size_t n,uint8_t*d,unsigned count){return tile_decode_lz(p,n,d,count);}\n')
   subprocess.run(['cc','-dynamiclib','-O2','-Wall','-Wextra','-Werror','-I'+str(ROOT/'ds/source'),str(source),'-o',str(library)],check=True)
   codec=C.CDLL(str(library));codec.decode.argtypes=[C.c_void_p,C.c_size_t,C.c_void_p,C.c_uint];codec.decode.restype=C.c_int
-  axis=((np.arange(256)*2+1)*25)//16;vertical=((np.arange(192)*2+1)*25)//16
   for key in sorted(keys):
    image=np.asarray(assets.image(assets.inventory['maps/'+key+'.w01']['frames'][4]));assert np.all(image[:600,:,3]==255)
-   sampled=image[vertical[:,None],axis[None,:]].astype(np.uint16)
+   sampled=np.asarray(Image.fromarray(image[:600]).resize((256,192),Image.Resampling.LANCZOS),dtype=np.uint16)
    expected=(0x8000|(sampled[:,:,0]>>3)|((sampled[:,:,1]>>3)<<5)|((sampled[:,:,2]>>3)<<10)).astype('<u2')
    assert(a.scenes/(key+'.bg')).read_bytes()==expected.tobytes()
    blob=(a.backgrounds/(key+'.par')).read_bytes();assert struct.unpack_from('<4sHH',blob)==(b'KFB4',256,192)

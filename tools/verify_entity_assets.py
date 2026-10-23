@@ -1,9 +1,14 @@
-"""Verify enemy/pickup packets, AOM animation ranges, geometry and map records."""
+"""Verify enemy/pickup packets, AOM animation ranges, geometry and map records.
+
+Raster bounds are derived independently from the original lattice; expected
+pixels come from the shared offline Lanczos raster filter.
+"""
 from pathlib import Path
 import argparse,ctypes as C,hashlib,json,struct,subprocess,tempfile
 import numpy as np
 from decoded_assets import DecodedAssets
 from native_resources import asset_source
+from player_scaled_build import raster
 
 ROOT=Path(__file__).resolve().parents[1]
 RANGES=('Left','Right','Up','Do','LeftUp','LeftDo','RightUp','RightDo','IdleLeft','IdleRight','IdleUp','IdleDo','IdleLeftUp','IdleLeftDo','IdleRightUp','IdleRightDo','Attack','Freeze','KO')
@@ -57,10 +62,7 @@ def main():
                         if not len(ix):ix=np.array([np.searchsorted(centers,left)])
                         if not len(iy):iy=np.array([np.searchsorted(centers,fy)])
                         assert(pw,ph,px,py)==(len(ix),len(iy),lattice[ix[0]],lattice[iy[0]])
-                        sx=centers[ix]-left;sy=centers[iy]-fy
-                        valid=(sx[None,:]>=0)&(sx[None,:]<w)&(sy[:,None]>=0)&(sy[:,None]<h)
-                        image=rgb[:,::-1] if mirror else rgb
-                        expected=np.where(valid,image[np.clip(sy,0,h-1)[:,None],np.clip(sx,0,w-1)[None,:]],0)
+                        expected=raster(rgb,fx-reference if mirror else fx,fy,not mirror)[0]
                         buffer=C.create_string_buffer(data[base+off:base+off+bytes_]);guard=np.full(pw*ph+32,0x1357,dtype='<u2')
                         assert codec.decode(buffer,bytes_,guard[16:].ctypes.data,pw*ph)
                         assert np.all(guard[:16]==0x1357)and np.all(guard[-16:]==0x1357)

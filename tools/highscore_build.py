@@ -55,10 +55,10 @@ def build(decoded,game,output):
    for i,name in enumerate(names):
     frames=inv[f'animation/interface/{name.lower()}.w01']['frames'];index=4 if i<4 and world_for_focus[i]==world else int(i==focus)
     f=frames[index];screen.alpha_composite(assets.image(f),(f['x'],f['y']))
-   sp=screen.load();raw=bytearray();preview=Image.new('RGB',(256,192));pp=preview.load()
+   sp=screen.convert('RGB').resize((256,192),Image.Resampling.LANCZOS).load();raw=bytearray();preview=Image.new('RGB',(256,192));pp=preview.load()
    for y in range(192):
     for x in range(256):
-     r,g,b,_=sp[((2*x+1)*25)//16,((2*y+1)*25)//16];v=0x8000|(r>>3)|((g>>3)<<5)|((b>>3)<<10);raw+=struct.pack('<H',v);pp[x,y]=((v&31)*255//31,((v>>5)&31)*255//31,((v>>10)&31)*255//31)
+     r,g,b=sp[x,y];v=0x8000|(r>>3)|((g>>3)<<5)|((b>>3)<<10);raw+=struct.pack('<H',v);pp[x,y]=((v&31)*255//31,((v>>5)&31)*255//31,((v>>10)&31)*255//31)
    filename=f'world{world}_focus{focus+1}.bin';(OUT/filename).write_bytes(raw);screens.append({'world':world,'focus':focus,'file':filename,'sha256':hashlib.sha256(raw).hexdigest()})
    if focus==-1:preview.save(RESEARCH/f'world{world}-background.png')
  keyboard0=list(pe.get_data(0x4550e8-0x400000,87));keyboard1=list(pe.get_data(0x455140-0x400000,87))
