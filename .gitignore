@@ -9,8 +9,7 @@
 !/docs/releases/
 !/docs/releases/*.md
 !/docs/images/
-!/docs/images/jungle.png
-!/docs/images/ice.png
+!/docs/images/jungle-framed.webp
 !/.github/
 !/.github/workflows/
 !/.github/workflows/source-checks.yml
@@ -50,8 +49,7 @@ __pycache__/
 /docs/releases/*
 !/docs/releases/*.md
 /docs/images/*
-!/docs/images/jungle.png
-!/docs/images/ice.png
+!/docs/images/jungle-framed.webp
 /.github/*
 !/.github/workflows/
 /.github/workflows/*

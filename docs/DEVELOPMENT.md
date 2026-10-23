@@ -5,7 +5,7 @@
 | `ds/source/` | Nintendo DS runtime C and ARM assembly | Yes |
 | `ds/tests/` | Host-side runtime tests | Yes |
 | `tools/` | Asset conversion, validators and current emulator tools | Yes |
-| `docs/` | Build/release documentation and two gameplay screenshots | Yes |
+| `docs/` | Build documentation and a framed gameplay screenshot | Yes |
 | `VERSION`, `CHANGELOG.md` | Release version and notes | Yes |
 | `ds/icon.png` | Optimized ROM banner icon | Yes |
 | `ds/assets/`, `ds/nitrofs/` | Generated runtime assets | No |
@@ -21,6 +21,6 @@ The root ignore rules use an allowlist. New top-level files and generated data a
 python3 tools/verify_source_tree.py
 ```
 
-The checker inspects tracked and untracked Git candidates for unexpected paths, symlinks and binary payloads. It allows only the two documented gameplay PNGs and the bundled 32×32 ROM icon as image files. It cannot establish ownership or licensing of source text; review the initial Git inventory before publication.
+The checker inspects tracked and untracked Git candidates for unexpected paths, symlinks and binary payloads. It allows only the approved framed gameplay WebP and the bundled 32×32 ROM icon as image files. It cannot establish ownership or licensing of source text; review the initial Git inventory before publication.
 
 Builds keep the SDK's space-free intermediate ROM in `ds/build/kinder_fresh.nds`, deduplicate identical NitroFS payloads, then publish the human-readable filename atomically. The ROM checksum sidecar is generated locally and ignored. Diagnostics remain opt-in.

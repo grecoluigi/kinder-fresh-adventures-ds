@@ -10,13 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 EXACT = {'.gitignore', 'README.md', 'requirements-assets.txt', 'ds/Makefile',
          'ds/README.md', 'tools/PLAYTEST.md', 'VERSION', 'CHANGELOG.md',
          '.github/workflows/source-checks.yml'}
-SCREENSHOTS = {'docs/images/jungle.png', 'docs/images/ice.png'}
-PNG_DIMENSIONS = {name: (256, 384) for name in SCREENSHOTS}
-PNG_DIMENSIONS['ds/icon.png'] = (32, 32)
+WEBP_DIMENSIONS = {'docs/images/jungle-framed.webp': (866, 907)}
+PNG_DIMENSIONS = {'ds/icon.png': (32, 32)}
 
 def allowed(name):
     path = Path(name)
-    return (name in EXACT or name in PNG_DIMENSIONS or
+    return (name in EXACT or name in PNG_DIMENSIONS or name in WEBP_DIMENSIONS or
             path.parent in {Path('docs'), Path('docs/releases')} and path.suffix == '.md' or
             path.parent == Path('ds/source') and path.suffix in {'.c', '.h', '.inc', '.s', '.S'} or
             path.parent == Path('ds/tests') and path.suffix == '.c' or
@@ -35,6 +34,24 @@ def main():
             errors.append(name + ': symlink can expose private local data')
         if not path.exists():
             continue  # A staged deletion has no publishable contents.
+        if name in WEBP_DIMENSIONS:
+            data = path.read_bytes()
+            try:
+                assert len(data) <= 256 * 1024, 'framed screenshot exceeds 256 KiB'
+                assert data[:4] == b'RIFF' and data[8:12] == b'WEBP', 'not a WebP'
+                assert struct.unpack_from('<I', data, 4)[0] + 8 == len(data), 'WebP size mismatch'
+                assert data[12:16] == b'VP8X', 'expected extended WebP header'
+                dimensions = tuple(int.from_bytes(data[start:start+3], 'little') + 1 for start in (24, 27))
+                assert dimensions == WEBP_DIMENSIONS[name], 'unexpected WebP dimensions'
+                offset = 12
+                while offset < len(data):
+                    size = struct.unpack_from('<I', data, offset+4)[0]
+                    offset += 8 + size + (size & 1)
+                    assert offset <= len(data), 'truncated WebP chunk'
+                assert offset == len(data), 'trailing WebP contents'
+            except (AssertionError, ValueError, struct.error) as error:
+                errors.append(name + ': ' + str(error))
+            continue
         if name in PNG_DIMENSIONS:
             data = path.read_bytes()
             try:

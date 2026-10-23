@@ -5,8 +5,7 @@ A Nintendo DS recomp of *Kinder Fresh Adventures Collection*.
 Some QoL improvements, like bottom-screen menus with touch support.
 
 <p align="center">
-  <img src="docs/images/jungle.png" width="256" alt="Jungle gameplay above the bottom-screen HUD">
-  <img src="docs/images/ice.png" width="256" alt="Mountain gameplay above the bottom-screen HUD">
+  <img src="docs/images/jungle-framed.webp" width="520" alt="Kinder Fresh Adventures running on a Nintendo DS, with Jungle gameplay on the top screen and the HUD on the bottom screen">
 </p>
 
 ## What is included
